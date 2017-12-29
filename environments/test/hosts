@@ -1,0 +1,10 @@
+[windows]
+[windows:children]
+domain_controllers
+member_servers
+
+[domain_controllers]
+dc01 ansible_host=192.168.100.10
+
+[member_servers]
+server01 ansible_host=192.168.100.11
