@@ -1,0 +1,55 @@
+---
+- name: CONTOSO.com member server configuration
+  hosts: member_servers
+
+  roles:
+    # - { role: common }
+
+  tasks:
+  - name: Configure DNS Server
+    win_dns_client:
+      adapter_names: "*"
+      ipv4_addresses:
+      - 192.168.100.10
+
+  - name: Debug
+    debug: var=inventory_hostname
+
+  - name: Change hostname to match inventory
+    win_domain_membership:
+      hostname: "{{ inventory_hostname }}"
+      domain_admin_user: "{{ ansible_user }}"
+      domain_admin_password: "{{ ansible_password }}"
+      workgroup_name: WORKGROUP
+      state: workgroup
+    register: name_state
+
+  - name: Reboot to complete name change
+    when: name_state.changed
+    win_reboot:
+      shutdown_timeout: 600
+      reboot_timeout: 600
+      post_boot_delay: 120
+
+  - name: Verify server is a member of CONTOSO.com
+    win_domain_membership:
+      hostname: "{{ inventory_hostname }}"
+      dns_domain_name: CONTOSO.com
+      domain_admin_user: test_admin@CONTOSO.com
+      domain_admin_password: "AutomationDoesW0rk!"
+      state: domain
+      domain_ou_path: CN=Computers,DC=CONTOSO,DC=com
+    register: domain_state
+
+  - name: Reboot to complete joining domain
+    when: domain_state.changed
+    win_reboot:
+      shutdown_timeout: 600
+      reboot_timeout: 600
+      post_boot_delay: 120
+
+  - name: Verify File Server Role is installed.
+    win_feature:
+      name: File-Services, FS-FileServer
+      state: present
+      include_management_tools: True

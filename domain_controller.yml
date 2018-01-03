@@ -1,0 +1,66 @@
+---
+- name: CONTOSO.com Domain Controller configuration
+  hosts: domain_controllers
+  serial: 1
+
+  roles:
+    - { role: common }
+
+  tasks:
+
+  # ensure the named domain is reachable from the target host; if not, create the domain in a new forest residing on the target host
+  - name: Ensure that CONTOSO.com Domain exists
+    win_domain:
+      dns_domain_name: CONTOSO.com
+      safe_mode_password: AutomationDoesW0rk!
+    register: check_domain
+
+  # Creating a Domain Controller requires a reboot
+  - name: Reboot to complete CONTOSO.com domain setup
+    win_reboot:
+      shutdown_timeout: 600
+      reboot_timeout: 600
+      post_boot_delay: 300
+    when: check_domain.changed
+
+  - name: Ensure the server is a domain controller
+    win_domain_controller:
+      dns_domain_name: CONTOSO.com
+      domain_admin_user: test_admin@CONTOSO.com
+      domain_admin_password: AutomationDoesW0rk!
+      safe_mode_password: AutomationDoesW0rk!
+      state: domain_controller
+      log_path: c:\ansible_win_domain_controller.txt
+    register: check_domain_controller
+
+  # Creating a Domain Controller requires a reboot
+  # Long delay post boot since the DC configuration takes a while
+  - name: Reboot to complete domain controller setup
+    win_reboot:
+      shutdown_timeout: 600
+      reboot_timeout: 600
+      post_boot_delay: 600
+    when: check_domain_controller.changed
+
+  - name: Check for xDnsServer Powershell module
+    win_psmodule:
+      name: xDnsServer
+      state: present
+
+  - name: Configure DNS Forwarders
+    win_dsc:
+      resource_name: xDnsServerSetting
+      Name: DNSServerProperties
+      NoRecursion: false
+      Forwarders:
+        - "8.8.8.8"
+        - "8.8.4.4"
+
+  - name: Ensure that Domain Admin test_admin@CONTOSO.com is present in OU cn=Users,dc=CONTOSO,dc=com
+    win_domain_user:
+      name: test_admin
+      password: "AutomationDoesW0rk!"
+      state: present
+      path: cn=Users,dc=CONTOSO,dc=com
+      groups:
+        - Domain Admins
