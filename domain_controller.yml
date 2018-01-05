@@ -20,7 +20,7 @@
     win_reboot:
       shutdown_timeout: 600
       reboot_timeout: 600
-      post_boot_delay: 300
+      post_reboot_delay: 120
     when: check_domain.changed
 
   - name: Ensure the server is a domain controller
@@ -39,7 +39,7 @@
     win_reboot:
       shutdown_timeout: 600
       reboot_timeout: 600
-      post_boot_delay: 600
+      post_reboot_delay: 120
     when: check_domain_controller.changed
 
   - name: Check for xDnsServer Powershell module

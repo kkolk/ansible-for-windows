@@ -45,3 +45,21 @@
     Localport: "3389"
     Protocol: "TCP"
     Description: "Opens the listener port for RDP"
+
+# Make sure our hostname matches the inventory and isn't still the value from vagrant template
+- name: Change hostname to match inventory
+  when: ansible_env.COMPUTERNAME != inventory_hostname|upper
+  win_domain_membership:
+    hostname: "{{ inventory_hostname }}"
+    domain_admin_user: "{{ ansible_user }}"
+    domain_admin_password: "{{ ansible_password }}"
+    workgroup_name: WORKGROUP
+    state: workgroup
+  register: name_state
+
+- name: Reboot to complete name change
+  when: name_state.changed
+  win_reboot:
+    shutdown_timeout: 600
+    reboot_timeout: 600
+    post_reboot_delay: 30
